@@ -79,4 +79,33 @@ a=6
 
 ## 原型链
 &nbsp;&nbsp;JS的原型链对于其他语言转过来的Coder显得有点玄乎，但其实了解过Go语言就很好理解原型链了。JS对象的继承方式跟Go很像，原理上都是基于代理模式，也就是一个类要去继承另一个类，则需要持有父类，虽然语法上没有显式地使用代理。<br/>
-&nbsp;&nbsp;前面的类与对象是用一个构造器函数来构建的，而每个函数都有一个prototype属性
+&nbsp;&nbsp;前面的类与对象是用一个构造器函数来构建的，而每个函数都有一个prototype属性,而这个prototype就是这个类对其原型的引用，可以对原型添加属性和函数，则用这个创建器创建出来的所有对象都会带有添加的属性和函数。
+```
+            function Person() {
+
+            }
+            Person.prototype.name = "xiaoming";
+            Person.prototype.say = function() {
+                console.log("my name is " + this.name);
+            };
+
+            var p = new Person();
+            console.log("name=" + p.name);
+            p.say();    
+```
+上面的代码创建了一个Person的创建器函数，并且对类Person的原型添加了一个name属性和一个say函数，在say函数中打印name，最后创建了一个Person的对象p，打印p的name并且调用p的say函数
+代码执行结果是：
+```
+name=xiaoming
+my name is xiaobing
+```
+&nbsp;&nbsp;既然类可以访问到其原型，那么对象如果访问到其原型呢？每个对象有一个__proto__属性，这个__proto__跟其类的prototype的指向是同一个对象。
+```
+            function Person() {
+
+            }
+            var p = new Person();
+            console.log(p.__proto__ === Person.prototype)        
+```
+还是一个Person类，创建一个p对象，打印p的__proto__属性和Person的prototype是否为同一个内存地址，运行结果是true
+&nbsp;&nbsp;既然一个类的原型是一个对象，而对象也是有原型的，那么就就会有原型原型了，也就是一个类有父类，父类又会有其父类，也是祖先类，因此原型就形成了一条链，这条原型链就实现了类的祖先继承关系
