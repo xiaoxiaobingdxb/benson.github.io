@@ -109,3 +109,102 @@ my name is xiaobing
 ```
 还是一个Person类，创建一个p对象，打印p的__proto__属性和Person的prototype是否为同一个内存地址，运行结果是true
 &nbsp;&nbsp;既然一个类的原型是一个对象，而对象也是有原型的，那么就就会有原型原型了，也就是一个类有父类，父类又会有其父类，也是祖先类，因此原型就形成了一条链，这条原型链就实现了类的祖先继承关系
+
+# 继承的实现方式
+## 基于原型链的实现
+&nbsp;&nbsp;基于原型链的实现就是将子类函数函数的prototype指向父类的一个对象，代码如下：
+```
+function Parent(name, age) {
+    this.name = name;
+    this.age = age;
+}
+Parent.prototype.say = function() {
+    console.log(this.name + " say: my age is " + this.age);
+}
+
+function Child() {
+
+}
+
+Child.prototype = new Parent("xiaoming", 20);
+
+let c = new Child();
+c.say();
+```
+执行的打印结果是：xiaoming say: my age is 20
+&nbsp;&nbsp;这种继承方式的缺陷很明显，我们无法使用Child的函数器向Parent传参
+
+## 经典继承实现
+&nbsp;&nbsp;既然使用原型链无法在Child的构造器中无法向Parent传参，那么我们就在Child的构造器中调用Parent的构造器，就可以实现把Child的构造器参数传给Parent的构造器了。代码如下：
+```
+function Parent(name, age) {
+    this.name = name;
+    this.age = age;
+}
+Parent.prototype.say = function() {
+    console.log(this.name + " say: my age is " + this.age);
+}
+function Child(name, age) {
+    Parent.call(this, name, age);
+}
+
+let c = new Child("xiaohong", 1);
+c.say();
+```
+执行的打印结果是：xiaohong say: my age is 1
+&nbsp;&nbsp;上面的代码在Child的构造器中调用了Parent.call(this, name ,age)，call函数是每个函数共用的一个函数，作用是把函数调用的this指向call的第一个参数，因此Parent函数中的this就变成了Child构造器中的this，也就是Child对象了，因此可以实现把Child构造器的参数传给Parent的构造器。但这样实现的缺陷也比较明显，就是我们构造子类对象时，把父类的函数都重新构造了一遍，这样构造的每个子类的say函数都不一样
+
+## 组合原型链继承和经典继承
+&nbsp;&nbsp;组合模式的实现原理是通过改变子类的原型并且利用经典继承的在子类构造器中调用父类构造器的方式，将子类构造器的参数传给父类构造器。代码如下：
+```
+function Parent(name, age) {
+    this.name = name;
+    this.age = age;
+}
+Parent.prototype.say = function() {
+    console.log(this.name + " say: my age is " + this.age);
+}
+function Child(name, age) {
+    Parent.call(this, name, age);
+}
+Child.prototype = new Parent();
+console.log(Child.prototype.constructor);
+Child.prototype.constructor = Child;
+let c = new Child("xiaohong", 1);
+c.say();
+```
+执行的打印结果是
+```
+[Function: Parent]
+xiaohong say: my age is 1
+```
+这里的两个核心操作是
+Child.prototype = new Parent();
+Child.prototype.constructor = Child;
+组合方式之所以解决了经典继承的缺陷，是因为Child的prototype已经指向了Parent对象，不会重复为Child创建Parent对象，因此Parent的say函数也只会被创建一个，这样所有的Child对象都会共享同一个Parent原型对象，因此也都会共享同一个say函数。
+&nbsp;&nbsp;但,看上面的代码会发现Parent的构造器函数被调用了两次，一次是在设置Child的原型的时候，Child的原型是一个Parent对象，这个Parent对象在创建的时候没有传参数，但也调用了一次Parent的构造器，第二次是在Child的构造器中，也就是说如果要创建n个Child对象，就会调用n+1次Parent的构造器
+
+## 寄生组合继承
+&nbsp;&nbsp;所谓寄生，就是把一个对象的创建的过程封装到一个函数中，这个函数传入结果对象的原型，这个函数的操作就是在原型的基础上进行增强，增强的结果就是目标对象，跟装饰模式差不多的思路。寄生组合继承代码如下：
+```
+function Child(name, age) {
+    Parent.call(this, name, age);
+}
+
+function object(o) {
+    let F = function() {};
+    F.prototype = o;
+    return new F();
+}
+
+function prototype(parent, child) {
+    let prototype = object(parent.prototype);
+    prototype.constructor = child;
+    child.prototype = prototype;
+}
+
+prototype(Parent, Child);
+let c = new Child("xiaohong", 1);
+c.say();
+```
+prototype函数中是组合的使用，而object就是寄生的使用，使用了一个F函数来做原型链的中转，避免了直接调用Parent的构造器，而是调用F函数，这样既能把Child和Parent的原型连起来，又避免了在建立原型链时直接创建Parent的对象，其实从根本上来看继承关系已经变成了Child继承F，F继承Parent，通过多创建一个F对象来避免多创建一个Parent。
